@@ -44,9 +44,9 @@ async def stop_giveaway(self, g_id, data):
     result_embed = discord.Embed(
         title="🎉 {} 🎉".format(data["prize"]),
         color=self.color,
-        description="Congratulations {} you won the giveaway !".format(", ".join(users_mention))
+        description="Tebrikler {} Çekilişi Kazandın !".format(", ".join(users_mention))
     ) \
-        .set_footer(icon_url=self.bot.user.avatar_url, text="Giveaway Ended !")
+        .set_footer(icon_url=self.bot.user.avatar_url, text="Çekiliş Sonlandırıldı.")
     await giveaway_message.edit(embed=result_embed)
     ghost_ping = await channel.send(", ".join(users_mention))
     await ghost_ping.delete()
@@ -87,16 +87,17 @@ class Giveaways(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     async def giveaway(self, ctx: commands.Context):
         init = await ctx.send(embed=discord.Embed(
-            title="🎉 New Giveaway ! 🎉",
-            description="Please answer the following questions to finalize the creation of the Giveaway",
+            title="🎉 Yeni Çekiliş ! 🎉",
+            description="Çekiliş oluşturma işlemini tamamlamak için lütfen aşağıdaki soruları yanıtlayın",
             color=self.color)
                        .set_footer(icon_url=self.bot.user.avatar_url, text=self.bot.user.name))
 
         questions = [
-            "What would be the prize of the giveaway?",
-            "What would the giveaway channel be like? (Please mention the giveaway channel)",
-            "What would be the duration of the giveaway ? Example: (1d | 1h | 1m | 1s)",
-            "How many winners do you want for this Giveaway ?"
+            "Çekilişe Bir isim verin. Örnek : (5 Kişiye 100 TL)",
+            "Hangi Kanalda Çekiliş Başlatmak İstiyorsun Örnek(#çekiliş) ?",
+            "Çekiliş Ne Kadar Sürecek ? Örnek: (1 Gün = 1d | 1 Saat = 1h | 1 Dakika = 1m )",
+            "Çekilişin Kaç Kazananı Olacak ?",
+            "Çekilişin Embed Mesajını Girin "
         ]
 
         def check(message):
@@ -110,7 +111,7 @@ class Giveaways(commands.Cog):
                 title="Giveaway 🎉",
                 description=question,
                 color=self.color
-            ).set_footer(icon_url=self.bot.user.avatar_url, text="Giveaway !")
+            ).set_footer(icon_url=self.bot.user.avatar_url, text="Çekiliş !")
             if index == 1:
                 question_message = await ctx.send(embed=embed)
             else:
@@ -123,7 +124,7 @@ class Giveaways(commands.Cog):
                 await ctx.send(embed=discord.Embed(
                     title="Error",
                     color=self.color,
-                    description="You took too long to answer this question"
+                    description="Soruyu Cevaplaman Çok Uzun Sürdü"
                 ))
                 return
             else:
@@ -132,35 +133,37 @@ class Giveaways(commands.Cog):
         try:
             channel_id = int(answers[1][2:-1])
         except ValueError:
-            await ctx.send("You didn't mention the channel correctly, do it like {}.".format(ctx.channel.mention))
+            await ctx.send("Kanal Adını Yanlış Yazdın. Örnek {}.".format(ctx.channel.mention))
             return
 
         try:
             winners = abs(int(answers[3]))
             if winners == 0:
-                await ctx.send("You did not enter an postive number.")
+                await ctx.send("Pozitif bir sayı girmediniz.")
                 return
         except ValueError:
-            await ctx.send("You did not enter an integer.")
+            await ctx.send("Bir tam sayı girmediniz.")
             return
         prize = answers[0].title()
+        xmessage = answers[4]
         channel = self.bot.get_channel(channel_id)
         converted_time = convert(answers[2])
         if converted_time == -1:
-            await ctx.send("You did not enter the correct unit of time (s|m|d|h)")
+            await ctx.send("Doğru zaman birimini girmediniz (s|m|d|h)")
         elif converted_time == -2:
-            await ctx.send("Your time value should be an integer.")
+            await ctx.send("Zaman değeriniz bir tamsayı olmalıdır.")
             return
         await init.delete()
         await question_message.delete()
         giveaway_embed = discord.Embed(
             title="🎉 {} 🎉".format(prize),
             color=self.color,
-            description=f'» **{winners}** {"winner" if winners == 1 else "winners"}\n'
-                        f'» Hosted by {ctx.author.mention}\n\n'
-                        f'» **React with 🎉 to get into the giveaway.**\n'
+            description=f'» **{xmessage}**\n'
+                        f'» **Çekilişe Katılmak İçin 🎉 Simgesine Tıklayın.**\n'
+                        f'» Tarafından Oluşturuldu {ctx.author.mention}\n\n'
+                        f'» **{winners}** {"winner" if winners == 1 else "Kişiye"}\n'
         )\
-            .set_footer(icon_url=self.bot.user.avatar_url, text="Ends at")
+            .set_footer(icon_url=self.bot.user.avatar_url, text="Bitecek")
 
         giveaway_embed.timestamp = datetime.datetime.utcnow() + datetime.timedelta(seconds=converted_time[0])
         giveaway_message = await channel.send(embed=giveaway_embed)
@@ -188,7 +191,7 @@ class Giveaways(commands.Cog):
         giveaways = json.load(open("cogs/giveaways.json", "r"))
         if not message_id in giveaways.keys(): return await ctx.send(
             embed=discord.Embed(title="Error",
-                                description="This giveaway ID is not found.",
+                                description="Bu çekiliş ID bulunamadı.",
                                 color=self.color))
         await stop_giveaway(self, message_id, giveaways[message_id])
 
@@ -200,12 +203,12 @@ class Giveaways(commands.Cog):
         if isinstance(error, commands.MissingPermissions):
             return await ctx.send(embed=discord.Embed(
                 title="Error",
-                description="You don't have the permission to use this command.",
+                description="Bu komutu kullanma izniniz yok.",
                 color=self.color))
         if isinstance(error, commands.MissingRequiredArgument):
             return await ctx.send(embed=discord.Embed(
                 title="Error",
-                description=f"You forgot to provide an argument, please do it like: `{ctx.command.name} {ctx.command.usage}`",
+                description=f"Bir argüman sağlamayı unuttunuz, lütfen şöyle yapın: `{ctx.command.name} {ctx.command.usage}`",
                 color=self.color))
 
 
